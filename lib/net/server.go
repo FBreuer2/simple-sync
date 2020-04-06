@@ -76,7 +76,7 @@ func (srv *ServerContext)  mainLoop() {
 			srv.peerList[peerID] = nil
 			log.Println("Peer with id " + peerID + " disconnected.")
 			break
-		case _ = <- srv.shouldStop:
+		case <- srv.shouldStop:
 			for _, peer := range(srv.peerList) {
 				peer.Stop()
 			}

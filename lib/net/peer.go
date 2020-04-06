@@ -113,9 +113,14 @@ func (peer *Peer) mainLoop() {
 						peer.HandleHelloPacket(&helloPacket)
 						break
 
-
-					
+					case LOGIN:
+						loginPacket := LoginPacket{}
+						loginPacket.UnmarshalBinary(packetBuf)
+						peer.HandleLoginPacket(&loginPacket)
+						break
 					}
+
+					break
 				}
 			}
 		}
@@ -130,4 +135,9 @@ func (peer *Peer) HandleHelloPacket(helloPacket *HelloPacket) {
 	peer.capabilities = helloPacket.Capabilities
 
 	log.Printf("Peer on " + peer.conn.RemoteAddr().String() + " sent hello with capability: %d \n", peer.capabilities)
+}
+
+func (peer *Peer) HandleLoginPacket(loginPacket *LoginPacket) {
+
+	log.Printf("Peer on " + peer.conn.RemoteAddr().String() + " tries to authenticate for \"%s\" \n", string(loginPacket.Username))
 }

@@ -1,9 +1,11 @@
 package db
 
 type AuthenticatorDatabase interface {
-	Register(user string, password string) (error)
-	Login(user string, password string) (error)
+	Init() (error)
+	Register(user []byte, password []byte) (error)
+	Login(user []byte, password []byte) (error)
+	Rekey(user []byte, oldPassword []byte, newPassword []byte) (error)
 
-	GetToken(user string, password string) (string, error)
-	ValidateToken(user string, token string) (error)
+	GenerateToken(user []byte, password []byte) ([]byte, error)
+	ValidateToken(user []byte, token []byte) (error)
 }

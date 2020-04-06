@@ -52,3 +52,31 @@ func (helloPacket *HelloPacket) UnmarshalBinary(data []byte) error {
 
 	return nil
 }
+
+
+func (loginPacket *LoginPacket) MarshalBinary() (data []byte, err error) {
+	marshalledData := make([]byte, 4 + loginPacket.UsernameLength + loginPacket.PasswordLength)
+
+	binary.BigEndian.PutUint16(marshalledData[:2], loginPacket.UsernameLength)
+	copy(marshalledData[2:2+loginPacket.UsernameLength], loginPacket.Username)
+
+	binary.BigEndian.PutUint16(marshalledData[2+loginPacket.UsernameLength:], loginPacket.PasswordLength)
+	copy(marshalledData[4+loginPacket.UsernameLength:], loginPacket.Password)
+
+	return marshalledData, nil
+}
+
+
+func (loginPacket *LoginPacket) UnmarshalBinary(data []byte) error {
+	loginPacket.UsernameLength = binary.BigEndian.Uint16(data[:2])
+
+	loginPacket.Username = make([]byte, loginPacket.UsernameLength)
+	copy(loginPacket.Username, data[2:2+loginPacket.UsernameLength])
+
+	loginPacket.PasswordLength = binary.BigEndian.Uint16(data[2+loginPacket.UsernameLength:])
+
+	loginPacket.Password = make([]byte, loginPacket.PasswordLength)
+	copy(loginPacket.Password, data[4+loginPacket.UsernameLength:])
+
+	return nil
+}

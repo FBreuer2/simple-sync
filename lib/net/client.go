@@ -2,7 +2,6 @@ package net
 
 import (
 	"net"
-    "log"
 	"crypto/tls"
 )
 
@@ -16,8 +15,6 @@ func NewClient(url string) (*ClientContext) {
 	return &ClientContext{
 		url: url,
 	}
-
-	
 }
 
 func (client *ClientContext) Start() (error) {
@@ -27,7 +24,6 @@ func (client *ClientContext) Start() (error) {
 
    	newConnection, err := tls.Dial("tcp", client.url, conf)
    	if err != nil {
-	   	log.Println(err)
 	   	return err
 	}
 
@@ -44,10 +40,30 @@ func (client *ClientContext) Stop() {
 
 
 func (client *ClientContext) mainLoop() {
+	client.sendHello()
+
+	for {
+		select {
+		case <- client.shouldStop:
+			client.conn.Close()
+			return
+		}
+
+	}
+}
+
+
+func (client *ClientContext) sendHello() {
 	helloPacket := NewHelloPacket()
+	client.sendPacket(helloPacket)
 
-	newPacket, _ := NewEncapsulatedPacket(helloPacket)
+	loginPacket := NewLoginPacket([]byte("user"), []byte("password"))
+	client.sendPacket(loginPacket)
+}
 
+
+func (client *ClientContext) sendPacket(packetToSend EncapsulatablePacket) {
+	newPacket, _ := NewEncapsulatedPacket(packetToSend)
 	data, _ := newPacket.MarshalBinary()
 	client.conn.Write(data)
 }

@@ -21,13 +21,20 @@ func main() {
 	flag.Parse()
 
 	client := net.NewClient(serverURL)
-	client.Start()
+	err := client.Start()
+
+	if (err != nil) {
+		log.Println(err)
+		return
+	}
 
 
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt)
+
 	select {
 		case <-c:
+			go client.Stop()
 		return
 	}
 }
@@ -39,7 +46,7 @@ func testSignature() {
 		log.Fatal(err)
 		return
 	}
-	_, err = fileWatcher.GetCompleteFileInformation(uint32(blockLength)*1025, uint32(strongLength))
+	_, err = fileWatcher.GetCompleteFileInformation(uint32(blockLength)*1024, uint32(strongLength))
 
 	if (err != nil) {
 		log.Fatal(err)
