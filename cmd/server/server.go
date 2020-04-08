@@ -12,7 +12,8 @@ import (
 
 func main() {
 
-	cer, err := tls.LoadX509KeyPair("certs/server.crt", "certs/server.key")
+	cer, err := tls.LoadX509KeyPair("./certs/server.crt", "./certs/server.key")
+
 	if err != nil {
 		log.Println(err)
 		return

@@ -13,17 +13,18 @@ type Peer struct {
 	version       uint16
 	capabilities  uint16
 	authenticated bool
+	username      []byte
 	shouldStop    chan bool
 	closed        chan string
-	userDB        db.AuthenticatorDatabase
+	db            db.FullDatabase
 }
 
-func NewPeer(conn net.Conn, closed chan string, userDB db.AuthenticatorDatabase) *Peer {
+func NewPeer(conn net.Conn, closed chan string, db db.FullDatabase) *Peer {
 	return &Peer{
 		conn:       conn,
 		shouldStop: make(chan bool),
 		closed:     closed,
-		userDB:     userDB,
+		db:         db,
 	}
 }
 
@@ -152,7 +153,7 @@ func (peer *Peer) HandleHelloPacket(helloPacket *HelloPacket) {
 }
 
 func (peer *Peer) HandleLoginPacket(loginPacket *LoginPacket) {
-	err := peer.userDB.Login(loginPacket.Username, loginPacket.Password)
+	err := peer.db.Login(loginPacket.Username, loginPacket.Password)
 
 	if err != nil {
 		// XXX: send error
@@ -161,17 +162,34 @@ func (peer *Peer) HandleLoginPacket(loginPacket *LoginPacket) {
 	}
 
 	peer.authenticated = true
+	peer.username = loginPacket.Username
 
 	log.Printf("Peer on "+peer.conn.RemoteAddr().String()+" authenticated for \"%s\" \n", string(loginPacket.Username))
 }
 
 func (peer *Peer) HandleShortFileMetadataPacketPacket(shortFileMetadataPacket *ShortFileMetadataPacket) {
-	sFM, err := shortFileMetadataPacket.GetData()
+	newSFM, err := shortFileMetadataPacket.GetData()
 
 	if err != nil {
 		log.Printf("Peer on "+peer.conn.RemoteAddr().String()+" has error \"%s\" \n", err.Error())
 		return
 	}
 
-	log.Printf("Peer on "+peer.conn.RemoteAddr().String()+" sent metadata with file size %d and time %s\n", sFM.FileSize, sFM.LastChanged.Format("2006-01-02 15:04:05.999999999 -0700 MST"))
+	currentSFM, err := peer.db.RetrieveShortFileMetadata(peer.username)
+
+	if err != nil || newSFM.ShouldOverwrite(currentSFM) == true {
+		// SFM not saved yet
+		peer.db.PutShortFileMetadata(peer.username, newSFM)
+		log.Printf("Peer on "+peer.conn.RemoteAddr().String()+" sent new metadata with file size %d and time %s\n", newSFM.FileSize, newSFM.LastChanged.Format("2006-01-02 15:04:05.999999999 -0700 MST"))
+		go peer.RetrieveBlocks()
+		return
+	}
+
+	log.Printf("Peer on "+peer.conn.RemoteAddr().String()+" sent stale metadata with file size %d and time %s\n", newSFM.FileSize, newSFM.LastChanged.Format("2006-01-02 15:04:05.999999999 -0700 MST"))
+}
+
+func (peer *Peer) RetrieveBlocks() {
+	// Check which blocks we have
+
+	// Send them to the client
 }

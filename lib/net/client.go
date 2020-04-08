@@ -1,12 +1,17 @@
 package net
 
 import (
+	"bytes"
 	"crypto/tls"
+	"crypto/x509"
+	"encoding/hex"
+	"errors"
 
 	"log"
 	"net"
 
 	"github.com/FBreuer2/simple-sync/lib/sync"
+	"golang.org/x/crypto/sha3"
 )
 
 type ClientContext struct {
@@ -15,12 +20,34 @@ type ClientContext struct {
 	conn          net.Conn
 	authenticated bool
 	fileWatcher   *sync.FileWatcher
+	serverHash    string
 }
 
-func NewClient(url string) *ClientContext {
+func NewClient(url string, serverCertificateHash string) *ClientContext {
 	return &ClientContext{
-		url: url,
+		url:        url,
+		serverHash: serverCertificateHash,
 	}
+}
+
+func (client *ClientContext) checkFingerprint(rawCerts [][]byte, verifiedChains [][]*x509.Certificate) error {
+	if len(client.serverHash) == 0 {
+		return errors.New("No server hash found.")
+	}
+
+	decodedServerHash, err := hex.DecodeString(client.serverHash)
+
+	if err != nil {
+		return err
+	}
+
+	for _, rawCert := range rawCerts {
+		if certificateHash := sha3.Sum256(rawCert); bytes.Equal(certificateHash[:], decodedServerHash) == true {
+			return nil
+		}
+	}
+
+	return errors.New("No matching server fingerprint.")
 }
 
 func (client *ClientContext) Start(filePath string) error {
@@ -33,7 +60,8 @@ func (client *ClientContext) Start(filePath string) error {
 	client.fileWatcher = fileWatcher
 
 	conf := &tls.Config{
-		InsecureSkipVerify: true,
+		InsecureSkipVerify:    true,
+		VerifyPeerCertificate: client.checkFingerprint,
 	}
 
 	newConnection, err := tls.Dial("tcp", client.url, conf)

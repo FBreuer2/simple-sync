@@ -14,7 +14,11 @@ type ExtendedFileMetadata struct {
 }
 
 type ShortFileMetadata struct {
-	FileSize uint64
-	FileHash []byte
+	FileSize    uint64
+	FileHash    []byte
 	LastChanged time.Time // String() string
+}
+
+func (sFM *ShortFileMetadata) ShouldOverwrite(otherSFM *ShortFileMetadata) bool {
+	return sFM.LastChanged.After(otherSFM.LastChanged)
 }

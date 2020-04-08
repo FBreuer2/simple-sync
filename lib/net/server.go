@@ -2,10 +2,12 @@ package net
 
 import (
 	"crypto/tls"
+	"encoding/hex"
 	"log"
 	"net"
 
 	"github.com/FBreuer2/simple-sync/lib/db"
+	"golang.org/x/crypto/sha3"
 )
 
 type ServerContext struct {
@@ -17,18 +19,18 @@ type ServerContext struct {
 	acceptingServer net.Listener
 	peerList        map[string]*Peer
 
-	userManagementDB db.AuthenticatorDatabase
+	db db.FullDatabase
 }
 
-func NewServer(interfaceToBind string, port string, cert tls.Certificate, userDB db.AuthenticatorDatabase) (*ServerContext, error) {
+func NewServer(interfaceToBind string, port string, cert tls.Certificate, db db.FullDatabase) (*ServerContext, error) {
 	newServerContext := &ServerContext{
-		interfaceToBind:  interfaceToBind,
-		port:             port,
-		cert:             cert,
-		shouldStop:       make(chan bool),
-		closed:           make(chan string),
-		peerList:         make(map[string]*Peer),
-		userManagementDB: userDB,
+		interfaceToBind: interfaceToBind,
+		port:            port,
+		cert:            cert,
+		shouldStop:      make(chan bool),
+		closed:          make(chan string),
+		peerList:        make(map[string]*Peer),
+		db:              db,
 	}
 
 	return newServerContext, nil
@@ -50,7 +52,10 @@ func (srv *ServerContext) Start() error {
 
 	newListener, err := tls.Listen("tcp", srv.interfaceToBind+":"+srv.port, config)
 
-	log.Println("Started server.")
+	certificateFingerprint := sha3.Sum256(srv.cert.Certificate[0])
+	certificateFingerprintHex := hex.EncodeToString(certificateFingerprint[:])
+
+	log.Printf("Started server with certificate fingerprint: %s.\n", certificateFingerprintHex)
 
 	srv.acceptingServer = newListener
 
@@ -103,7 +108,7 @@ func (srv *ServerContext) runAccept() {
 }
 
 func (srv *ServerContext) newClient(newClient net.Conn) {
-	newPeer := NewPeer(newClient, srv.closed, srv.userManagementDB)
+	newPeer := NewPeer(newClient, srv.closed, srv.db)
 
 	exists := srv.peerList[newPeer.GetUniqueIdentifier()]
 

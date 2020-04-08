@@ -11,20 +11,20 @@ import (
 )
 
 type FileWatcher struct {
-	filePath string
+	filePath          string
 	currentShortState *ShortFileMetadata
-	currentFullState *ExtendedFileMetadata
-	changedCallback func()
+	currentFullState  *ExtendedFileMetadata
+	changedCallback   func()
 }
 
-func NewFileWatcher(path string) (newFileWatcher *FileWatcher,err error) {
-	var newWatcher = &FileWatcher {
+func NewFileWatcher(path string) (newFileWatcher *FileWatcher, err error) {
+	var newWatcher = &FileWatcher{
 		filePath: path,
 	}
 
 	shortData, err := newWatcher.GetShortFileMetadata()
 
-	if (err != nil) {
+	if err != nil {
 		return nil, err
 	}
 
@@ -32,12 +32,10 @@ func NewFileWatcher(path string) (newFileWatcher *FileWatcher,err error) {
 	return newWatcher, nil
 }
 
-
 func (fileWatcher *FileWatcher) ResetCache() {
 	fileWatcher.currentShortState = nil
 	fileWatcher.currentFullState = nil
 }
-
 
 func (fileWatcher *FileWatcher) GetShortFileMetadata() (metadata *ShortFileMetadata, err error) {
 	if fileWatcher.currentShortState != nil {
@@ -60,7 +58,7 @@ func (fileWatcher *FileWatcher) GetShortFileMetadata() (metadata *ShortFileMetad
 
 	hasher, err := blake2b.New256(nil)
 
-	if (err != nil) {
+	if err != nil {
 		return nil, err
 	}
 
@@ -70,15 +68,14 @@ func (fileWatcher *FileWatcher) GetShortFileMetadata() (metadata *ShortFileMetad
 
 	hash := hasher.Sum(nil)
 
-	fileWatcher.currentShortState = &ShortFileMetadata {
-		FileSize:             uint64(fileInfo.Size()),
-		FileHash: 			  hash,
-		LastChanged:          fileInfo.ModTime(),
+	fileWatcher.currentShortState = &ShortFileMetadata{
+		FileSize:    uint64(fileInfo.Size()),
+		FileHash:    hash,
+		LastChanged: fileInfo.ModTime(),
 	}
 
 	return fileWatcher.currentShortState, nil
 }
-
 
 func (fileWatcher *FileWatcher) GetCompleteFileInformation(blockLength uint32, strongChecksumLength uint32) (metadata *ExtendedFileMetadata, err error) {
 	if fileWatcher.currentFullState != nil {
@@ -120,6 +117,6 @@ func (fileWatcher *FileWatcher) GetCompleteFileInformation(blockLength uint32, s
 		WeakBlockHashes:      fileSignatureData.GetWeakRollsum(),
 		StrongBlockHashes:    fileSignatureData.GetStrongChecksums(),
 	}
-	
+
 	return fileWatcher.currentFullState, nil
 }
