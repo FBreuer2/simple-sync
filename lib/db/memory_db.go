@@ -9,101 +9,93 @@ import (
 )
 
 type MemoryDB struct {
-	users 	map[[]byte][]byte
-	tokens 	map[[]byte][]byte
+	users  map[string][]byte
+	tokens map[string][]byte
 }
 
 const (
-	TOKEN_SIZE	20
+	TOKEN_SIZE = 20
 )
 
-func NewMemoryDB() (*MemoryDB) {
-	return &MemoryDB{}
+func NewMemoryDB() *MemoryDB {
+	return &MemoryDB{
+		users:  make(map[string][]byte),
+		tokens: make(map[string][]byte),
+	}
 }
 
-
-func (mDB *MemoryDB) Init() (error) {
-	mDB.users = make(map[[]byte][]byte)
-
-}
-
-
-func (mDB *MemoryDB) Register(user []byte, password []byte) (error) {
-	if users[user] != nil {
+func (mDB *MemoryDB) Register(user []byte, password []byte) error {
+	if mDB.users[string(user)] != nil {
 		return errors.New("User already exists.")
 	}
 
 	hash, err := bcrypt.GenerateFromPassword(password, bcrypt.MaxCost/2)
 
-	if (err != nil) {
+	if err != nil {
 		return err
 	}
 
-	users[user] = hash
+	mDB.users[string(user)] = hash
 
 	return nil
 }
 
-
-func (mDB *MemoryDB) Login(user []byte, password []byte) (error) {
-	if users[user] == nil {
+func (mDB *MemoryDB) Login(user []byte, password []byte) error {
+	if mDB.users[string(user)] == nil {
 		return errors.New("User does not exist.")
 	}
 
-    return bcrypt.CompareHashAndPassword(users[user], password)
+	return bcrypt.CompareHashAndPassword(mDB.users[string(user)], password)
 }
 
-
-func (mDB *MemoryDB) Rekey(user []byte, oldPassword []byte, newPassword []byte) (error) {
+func (mDB *MemoryDB) Rekey(user []byte, oldPassword []byte, newPassword []byte) error {
 	if err := mDB.Login(user, oldPassword); err != nil {
 		return err
 	}
 
 	hash, err := bcrypt.GenerateFromPassword(newPassword, bcrypt.MaxCost/2)
 
-	if (err != nil) {
+	if err != nil {
 		return err
 	}
 
-	users[user] = hash
+	mDB.users[string(user)] = hash
 
 	return nil
 }
 
-
-func (mDB *MemoryDB) GetToken(user []byte, password []byte) ([]byte, error) {
-	if (err := mDB.Login(user, password); err != nil) {
+func (mDB *MemoryDB) GenerateToken(user []byte, password []byte) ([]byte, error) {
+	if err := mDB.Login(user, password); err != nil {
 		return nil, err
 	}
 
-	if token := mDB.tokens[user]; token != nil {
+	if token := mDB.tokens[string(user)]; token != nil {
 		return token, nil
 	}
 
 	newTokenBytes := make([]byte, TOKEN_SIZE)
 
-	readBytes, err := rand.Read(newTokenBytes) (n int, err error)
+	readBytes, err := rand.Read(newTokenBytes)
 
-	if (err != nil) {
+	if err != nil {
 		return nil, err
 	}
 
-	if (readBytes < TOKEN_SIZE) {
-		return nil, erros.New("Could not read enough random bytes to generate the token.")
+	if readBytes < TOKEN_SIZE {
+		return nil, errors.New("Could not read enough random bytes to generate the token.")
 	}
 
-	mDB.tokens[user] = newTokenBytes
+	mDB.tokens[string(user)] = newTokenBytes
 
 	return newTokenBytes, nil
 }
 
-
-func (mDB *MemoryDB) ValidateToken(user []byte, token []byte) (error) {
-	if users[user] == nil {
+func (mDB *MemoryDB) ValidateToken(user []byte, token []byte) error {
+	if mDB.users[string(user)] == nil {
 		return errors.New("User does not exist.")
 	}
 
-	if bytes.Equal(token, users[user]) == false {
+	if bytes.Equal(token, mDB.tokens[string(user)]) == false {
 		return errors.New("Wrong token for this user.")
 	}
 

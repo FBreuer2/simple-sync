@@ -16,5 +16,5 @@ type ExtendedFileMetadata struct {
 type ShortFileMetadata struct {
 	FileSize uint64
 	FileHash []byte
-	LastChanged time.Time
+	LastChanged time.Time // String() string
 }

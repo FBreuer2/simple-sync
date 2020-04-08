@@ -2,11 +2,15 @@ package net
 
 import (
 	"encoding"
+	"time"
+
+	"github.com/FBreuer2/simple-sync/lib/sync"
 )
 
 const (
 	HELLO = 1
 	LOGIN = 2
+	SHORT_FILE_METADATA = 3
 )
 
 const (
@@ -77,4 +81,42 @@ func NewLoginPacket(username, password []byte) (*LoginPacket) {
 
 func (lP *LoginPacket) Type() uint16 {
 	return LOGIN
+}
+
+
+type ShortFileMetadataPacket struct {
+	FileSize uint64
+	FileHashLength uint64
+	FileHash []byte
+	LastChangedLength uint64
+	LastChanged []byte // String() string
+}
+
+
+func NewShortFileMetaDataPacket(sFM *sync.ShortFileMetadata) (*ShortFileMetadataPacket) {
+	return &ShortFileMetadataPacket{
+		FileSize: sFM.FileSize,
+		FileHashLength: uint64(len(sFM.FileHash)),
+		FileHash: sFM.FileHash,
+		LastChangedLength: uint64(len([]byte(sFM.LastChanged.Format("2006-01-02 15:04:05.999999999 -0700 MST")))),
+		LastChanged: []byte(sFM.LastChanged.Format("2006-01-02 15:04:05.999999999 -0700 MST")),
+	}
+}
+
+func (sFM *ShortFileMetadataPacket) GetData() (*sync.ShortFileMetadata, error) {
+	timeObject, err := time.Parse("2006-01-02 15:04:05.999999999 -0700 MST", string(sFM.LastChanged))
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &sync.ShortFileMetadata{
+		FileSize: sFM.FileSize,
+		FileHash: sFM.FileHash,
+		LastChanged: timeObject,
+	}, nil
+}
+
+func (sFM *ShortFileMetadataPacket) Type() uint16 {
+	return SHORT_FILE_METADATA
 }

@@ -80,3 +80,35 @@ func (loginPacket *LoginPacket) UnmarshalBinary(data []byte) error {
 
 	return nil
 }
+
+
+func (sFM *ShortFileMetadataPacket) MarshalBinary() (data []byte, err error) {
+	marshalledData := make([]byte, 8 + 8 + 8  + len(sFM.FileHash) + len(sFM.LastChanged))
+
+	binary.BigEndian.PutUint64(marshalledData[:8], sFM.FileSize)
+	binary.BigEndian.PutUint64(marshalledData[8:16], sFM.FileHashLength)
+
+	copy(marshalledData[16:16+sFM.FileHashLength], sFM.FileHash)
+
+	binary.BigEndian.PutUint64(marshalledData[16+sFM.FileHashLength:24+sFM.FileHashLength], sFM.LastChangedLength)
+	copy(marshalledData[24+sFM.FileHashLength:24+sFM.FileHashLength+sFM.LastChangedLength], sFM.LastChanged)
+
+	return marshalledData, nil
+}
+
+
+func (sFM *ShortFileMetadataPacket) UnmarshalBinary(data []byte) error {
+	sFM.FileSize = binary.BigEndian.Uint64(data[:8])
+
+	sFM.FileHashLength = binary.BigEndian.Uint64(data[8:16])
+
+	sFM.FileHash = make([]byte, sFM.FileHashLength)
+	copy(sFM.FileHash, data[16:16+sFM.FileHashLength])
+
+	sFM.LastChangedLength = binary.BigEndian.Uint64(data[16+sFM.FileHashLength:24+sFM.FileHashLength])
+
+	sFM.LastChanged = make([]byte, sFM.LastChangedLength)
+	copy(sFM.LastChanged, data[24+sFM.FileHashLength:])
+
+	return nil
+}

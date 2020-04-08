@@ -3,8 +3,10 @@ package net_test
 import (
 	"bytes"
 	"testing"
+	"time"
 
 	"github.com/FBreuer2/simple-sync/lib/net"
+	"github.com/FBreuer2/simple-sync/lib/sync"
 )
 
 var helloCombinations = []struct {
@@ -92,5 +94,46 @@ func TestPacketMarshalling(t *testing.T) {
 		if helloPacket.Capabilities != instance.Capabilities {
 			t.Errorf("Unmarshaling packet encapsulated HelloPacket::Capabilities expected %d, actual %d", instance.Capabilities, helloPacket.Capabilities)
 		  }
+	  }
+}
+
+var shortFileMetadataCombinations = []*sync.ShortFileMetadata {
+	&sync.ShortFileMetadata{12, []byte("123"), time.Now()},
+	&sync.ShortFileMetadata{20, []byte("user"), time.Now()},
+}
+
+func TestShortFileMetadataPacketMarshalling(t *testing.T) {
+	for _, instance := range shortFileMetadataCombinations {
+		metaPacket := net.NewShortFileMetaDataPacket(instance)
+
+		marshalled, _ := metaPacket.MarshalBinary()
+
+		newPacket, _ := net.NewEncapsulatedPacket(metaPacket)
+
+		marshalledPacket, _ := newPacket.MarshalBinary()
+
+		newPacket.UnmarshalBinary(marshalledPacket)
+		metaPacket.UnmarshalBinary(newPacket.Data)
+
+		if newPacket.PacketLength != uint64(len(marshalled)) {
+			t.Errorf("Unmarshaling packet encapsulated Packet::PacketLength expected %d, actual %d", len(marshalled), newPacket.PacketLength)
+		}
+
+		if metaPacket.FileSize != instance.FileSize {
+			t.Errorf("Unmarshaling packet encapsulated ShortFileMetadataPaket::FileSize expected %d, actual %d", instance.FileSize, metaPacket.FileSize)
+		  }
+
+		if bytes.Equal(metaPacket.FileHash, instance.FileHash) != true {
+		  t.Errorf("Unmarshaling packet encapsulated ShortFileMetadataPaket::FileHash expected %s, actual %s", string(instance.FileHash), string(metaPacket.FileHash))
+		}
+
+		if bytes.Equal(metaPacket.LastChanged, []byte(instance.LastChanged.Format("2006-01-02 15:04:05.999999999 -0700 MST"))) != true {
+			t.Errorf("Unmarshaling packet encapsulated ShortFileMetadataPaket::LastChanged expected %s, actual %s", string(instance.LastChanged.Format("2006-01-02 15:04:05.999999999 -0700 MST")), string(metaPacket.LastChanged))
+		  }
+
+		_, err := metaPacket.GetData()
+		if (err != nil) {
+			t.Errorf("Time parsing was errornous: %s", err.Error())
+		}
 	  }
 }

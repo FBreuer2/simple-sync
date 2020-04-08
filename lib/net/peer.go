@@ -2,29 +2,32 @@ package net
 
 import (
 	"io"
-	"net"
 	"log"
+	"net"
+
+	"github.com/FBreuer2/simple-sync/lib/db"
 )
 
 type Peer struct {
-	conn net.Conn
-	version uint16
-	capabilities uint16
+	conn          net.Conn
+	version       uint16
+	capabilities  uint16
 	authenticated bool
-	shouldStop chan bool
-	closed chan string
+	shouldStop    chan bool
+	closed        chan string
+	userDB        db.AuthenticatorDatabase
 }
 
-func NewPeer(conn net.Conn, closed chan string) (*Peer) {
+func NewPeer(conn net.Conn, closed chan string, userDB db.AuthenticatorDatabase) *Peer {
 	return &Peer{
-		conn: conn,
+		conn:       conn,
 		shouldStop: make(chan bool),
-		closed: closed,
+		closed:     closed,
+		userDB:     userDB,
 	}
 }
 
-
-func (peer *Peer) GetUniqueIdentifier() (string) {
+func (peer *Peer) GetUniqueIdentifier() string {
 	return peer.conn.RemoteAddr().String()
 }
 
@@ -32,7 +35,7 @@ func (peer *Peer) Start() {
 	go peer.mainLoop()
 
 	select {
-	case _ = <- peer.shouldStop:
+	case _ = <-peer.shouldStop:
 		peer.conn.Close()
 		return
 	}
@@ -118,6 +121,18 @@ func (peer *Peer) mainLoop() {
 						loginPacket.UnmarshalBinary(packetBuf)
 						peer.HandleLoginPacket(&loginPacket)
 						break
+
+					case SHORT_FILE_METADATA:
+						if peer.authenticated == false {
+							// XXX: send error
+							log.Printf("Peer on " + peer.conn.RemoteAddr().String() + " sent packet without authentication\n")
+							break
+						}
+
+						sFMPPacket := ShortFileMetadataPacket{}
+						sFMPPacket.UnmarshalBinary(packetBuf)
+						peer.HandleShortFileMetadataPacketPacket(&sFMPPacket)
+						break
 					}
 
 					break
@@ -129,15 +144,34 @@ func (peer *Peer) mainLoop() {
 
 }
 
-
 func (peer *Peer) HandleHelloPacket(helloPacket *HelloPacket) {
 	peer.version = helloPacket.Version
 	peer.capabilities = helloPacket.Capabilities
 
-	log.Printf("Peer on " + peer.conn.RemoteAddr().String() + " sent hello with capability: %d \n", peer.capabilities)
+	log.Printf("Peer on "+peer.conn.RemoteAddr().String()+" sent hello with capability: %d \n", peer.capabilities)
 }
 
 func (peer *Peer) HandleLoginPacket(loginPacket *LoginPacket) {
+	err := peer.userDB.Login(loginPacket.Username, loginPacket.Password)
 
-	log.Printf("Peer on " + peer.conn.RemoteAddr().String() + " tries to authenticate for \"%s\" \n", string(loginPacket.Username))
+	if err != nil {
+		// XXX: send error
+		log.Printf("Peer on "+peer.conn.RemoteAddr().String()+" tried to authenticate for \"%s\" with error: %s\n", string(loginPacket.Username), err.Error())
+		return
+	}
+
+	peer.authenticated = true
+
+	log.Printf("Peer on "+peer.conn.RemoteAddr().String()+" authenticated for \"%s\" \n", string(loginPacket.Username))
+}
+
+func (peer *Peer) HandleShortFileMetadataPacketPacket(shortFileMetadataPacket *ShortFileMetadataPacket) {
+	sFM, err := shortFileMetadataPacket.GetData()
+
+	if err != nil {
+		log.Printf("Peer on "+peer.conn.RemoteAddr().String()+" has error \"%s\" \n", err.Error())
+		return
+	}
+
+	log.Printf("Peer on "+peer.conn.RemoteAddr().String()+" sent metadata with file size %d and time %s\n", sFM.FileSize, sFM.LastChanged.Format("2006-01-02 15:04:05.999999999 -0700 MST"))
 }

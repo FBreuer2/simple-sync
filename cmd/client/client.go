@@ -5,7 +5,7 @@ import (
 	"log"
 	"os"
 	"os/signal"
-	"github.com/FBreuer2/simple-sync/lib/sync"
+
 	"github.com/FBreuer2/simple-sync/lib/net"
 )
 
@@ -21,7 +21,7 @@ func main() {
 	flag.Parse()
 
 	client := net.NewClient(serverURL)
-	err := client.Start()
+	err := client.Start("./keys.kdbx")
 
 	if (err != nil) {
 		log.Println(err)
@@ -35,21 +35,6 @@ func main() {
 	select {
 		case <-c:
 			go client.Stop()
-		return
-	}
-}
-
-
-func testSignature() {
-	fileWatcher, err := sync.NewFileWatcher(pathToInputFile)
-	if (err != nil) {
-		log.Fatal(err)
-		return
-	}
-	_, err = fileWatcher.GetCompleteFileInformation(uint32(blockLength)*1024, uint32(strongLength))
-
-	if (err != nil) {
-		log.Fatal(err)
 		return
 	}
 }
