@@ -10,10 +10,11 @@ import (
 )
 
 type ClientContext struct {
-	url         string
-	shouldStop  chan bool
-	conn        net.Conn
-	fileWatcher *sync.FileWatcher
+	url           string
+	shouldStop    chan bool
+	conn          net.Conn
+	authenticated bool
+	fileWatcher   *sync.FileWatcher
 }
 
 func NewClient(url string) *ClientContext {

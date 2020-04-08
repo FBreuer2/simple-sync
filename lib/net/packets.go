@@ -8,21 +8,21 @@ import (
 )
 
 const (
-	HELLO = 1
-	LOGIN = 2
+	REPLY               = 0
+	HELLO               = 1
+	LOGIN               = 2
 	SHORT_FILE_METADATA = 3
 )
 
 const (
-	VERSION_0_1    = 0
+	VERSION_0_1 = 0
 )
 
 const (
 	CAPABILITY_LOGIN = 0
-	CAPABILITY_SYNC = 1
+	CAPABILITY_SYNC  = 1
 	CAPABILITY_TOKEN = 2
 )
-
 
 type Packet struct {
 	PacketType   uint16
@@ -33,7 +33,7 @@ type Packet struct {
 func NewEncapsulatedPacket(originalPacket EncapsulatablePacket) (*Packet, error) {
 	marshalled, err := originalPacket.MarshalBinary()
 
-	if (err != nil) {
+	if err != nil {
 		return nil, err
 	}
 
@@ -41,9 +41,23 @@ func NewEncapsulatedPacket(originalPacket EncapsulatablePacket) (*Packet, error)
 }
 
 type EncapsulatablePacket interface {
-	Type() 				uint16
+	Type() uint16
 	encoding.BinaryMarshaler
 	encoding.BinaryUnmarshaler
+}
+
+type ReplyPacket struct {
+	ErrorCode         uint16
+	ErrorStringLength uint64
+	ErrorString       []byte
+}
+
+func NewReplyPacket(code uint16, errorString string) *ReplyPacket {
+	return &ReplyPacket{code, uint64(len([]byte(errorString))), []byte(errorString)}
+}
+
+func (rp *ReplyPacket) Type() uint16 {
+	return REPLY
 }
 
 type HelloPacket struct {
@@ -51,16 +65,13 @@ type HelloPacket struct {
 	Capabilities uint16
 }
 
-
-func NewHelloPacket() (*HelloPacket) {
+func NewHelloPacket() *HelloPacket {
 	return &HelloPacket{VERSION_0_1, CAPABILITY_LOGIN | CAPABILITY_SYNC | CAPABILITY_TOKEN}
 }
 
-
-func ( hP*HelloPacket) Type() uint16 {
+func (hP *HelloPacket) Type() uint16 {
 	return HELLO
 }
-
 
 type LoginPacket struct {
 	UsernameLength uint16
@@ -69,13 +80,12 @@ type LoginPacket struct {
 	Password       []byte
 }
 
-
-func NewLoginPacket(username, password []byte) (*LoginPacket) {
+func NewLoginPacket(username, password []byte) *LoginPacket {
 	return &LoginPacket{
 		UsernameLength: uint16(len(username)),
-		Username: username,
+		Username:       username,
 		PasswordLength: uint16(len(password)),
-		Password: password,
+		Password:       password,
 	}
 }
 
@@ -83,23 +93,21 @@ func (lP *LoginPacket) Type() uint16 {
 	return LOGIN
 }
 
-
 type ShortFileMetadataPacket struct {
-	FileSize uint64
-	FileHashLength uint64
-	FileHash []byte
+	FileSize          uint64
+	FileHashLength    uint64
+	FileHash          []byte
 	LastChangedLength uint64
-	LastChanged []byte // String() string
+	LastChanged       []byte // String() string
 }
 
-
-func NewShortFileMetaDataPacket(sFM *sync.ShortFileMetadata) (*ShortFileMetadataPacket) {
+func NewShortFileMetaDataPacket(sFM *sync.ShortFileMetadata) *ShortFileMetadataPacket {
 	return &ShortFileMetadataPacket{
-		FileSize: sFM.FileSize,
-		FileHashLength: uint64(len(sFM.FileHash)),
-		FileHash: sFM.FileHash,
+		FileSize:          sFM.FileSize,
+		FileHashLength:    uint64(len(sFM.FileHash)),
+		FileHash:          sFM.FileHash,
 		LastChangedLength: uint64(len([]byte(sFM.LastChanged.Format("2006-01-02 15:04:05.999999999 -0700 MST")))),
-		LastChanged: []byte(sFM.LastChanged.Format("2006-01-02 15:04:05.999999999 -0700 MST")),
+		LastChanged:       []byte(sFM.LastChanged.Format("2006-01-02 15:04:05.999999999 -0700 MST")),
 	}
 }
 
@@ -111,8 +119,8 @@ func (sFM *ShortFileMetadataPacket) GetData() (*sync.ShortFileMetadata, error) {
 	}
 
 	return &sync.ShortFileMetadata{
-		FileSize: sFM.FileSize,
-		FileHash: sFM.FileHash,
+		FileSize:    sFM.FileSize,
+		FileHash:    sFM.FileHash,
 		LastChanged: timeObject,
 	}, nil
 }

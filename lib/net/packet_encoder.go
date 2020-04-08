@@ -5,34 +5,53 @@ import (
 	"errors"
 )
 
-func PacketFromHeader(data []byte) (*Packet, error) { 
-	if (len(data) < 10) {
+func PacketFromHeader(data []byte) (*Packet, error) {
+	if len(data) < 10 {
 		return nil, errors.New("PacketFromHeader: Data not long enough")
 	}
 
 	return &Packet{
-		PacketType: binary.BigEndian.Uint16(data[:2]),
+		PacketType:   binary.BigEndian.Uint16(data[:2]),
 		PacketLength: binary.BigEndian.Uint64(data[2:10]),
 	}, nil
 }
 
 func (packet *Packet) MarshalBinary() (data []byte, err error) {
-	marshalledData := make([]byte, 10 + len(packet.Data))
+	marshalledData := make([]byte, 10+len(packet.Data))
 
 	binary.BigEndian.PutUint16(marshalledData[:2], packet.PacketType)
 	binary.BigEndian.PutUint64(marshalledData[2:10], packet.PacketLength)
-	copy(marshalledData[10:], packet.Data) 
+	copy(marshalledData[10:], packet.Data)
 
 	return marshalledData, nil
 }
-
 
 func (packet *Packet) UnmarshalBinary(data []byte) error {
 	packet.PacketType = binary.BigEndian.Uint16(data[:2])
 	packet.PacketLength = binary.BigEndian.Uint64(data[2:10])
 
 	copy(packet.Data, data[10:])
-	
+
+	return nil
+}
+
+func (rP *ReplyPacket) MarshalBinary() (data []byte, err error) {
+	marshalledData := make([]byte, 10+rP.ErrorStringLength)
+
+	binary.BigEndian.PutUint16(marshalledData[:2], rP.ErrorCode)
+	binary.BigEndian.PutUint64(marshalledData[2:10], rP.ErrorStringLength)
+
+	copy(marshalledData[10:10+rP.ErrorStringLength], rP.ErrorString)
+
+	return marshalledData, nil
+}
+
+func (rP *ReplyPacket) UnmarshalBinary(data []byte) error {
+	rP.ErrorCode = binary.BigEndian.Uint16(data[:2])
+	rP.ErrorStringLength = binary.BigEndian.Uint64(data[2:10])
+
+	rP.ErrorString = make([]byte, rP.ErrorStringLength)
+	copy(rP.ErrorString, data[10:10+rP.ErrorStringLength])
 	return nil
 }
 
@@ -45,7 +64,6 @@ func (helloPacket *HelloPacket) MarshalBinary() (data []byte, err error) {
 	return marshalledData, nil
 }
 
-
 func (helloPacket *HelloPacket) UnmarshalBinary(data []byte) error {
 	helloPacket.Version = binary.BigEndian.Uint16(data[:2])
 	helloPacket.Capabilities = binary.BigEndian.Uint16(data[2:])
@@ -53,9 +71,8 @@ func (helloPacket *HelloPacket) UnmarshalBinary(data []byte) error {
 	return nil
 }
 
-
 func (loginPacket *LoginPacket) MarshalBinary() (data []byte, err error) {
-	marshalledData := make([]byte, 4 + loginPacket.UsernameLength + loginPacket.PasswordLength)
+	marshalledData := make([]byte, 4+loginPacket.UsernameLength+loginPacket.PasswordLength)
 
 	binary.BigEndian.PutUint16(marshalledData[:2], loginPacket.UsernameLength)
 	copy(marshalledData[2:2+loginPacket.UsernameLength], loginPacket.Username)
@@ -65,7 +82,6 @@ func (loginPacket *LoginPacket) MarshalBinary() (data []byte, err error) {
 
 	return marshalledData, nil
 }
-
 
 func (loginPacket *LoginPacket) UnmarshalBinary(data []byte) error {
 	loginPacket.UsernameLength = binary.BigEndian.Uint16(data[:2])
@@ -81,9 +97,8 @@ func (loginPacket *LoginPacket) UnmarshalBinary(data []byte) error {
 	return nil
 }
 
-
 func (sFM *ShortFileMetadataPacket) MarshalBinary() (data []byte, err error) {
-	marshalledData := make([]byte, 8 + 8 + 8  + len(sFM.FileHash) + len(sFM.LastChanged))
+	marshalledData := make([]byte, 8+8+8+len(sFM.FileHash)+len(sFM.LastChanged))
 
 	binary.BigEndian.PutUint64(marshalledData[:8], sFM.FileSize)
 	binary.BigEndian.PutUint64(marshalledData[8:16], sFM.FileHashLength)
@@ -96,7 +111,6 @@ func (sFM *ShortFileMetadataPacket) MarshalBinary() (data []byte, err error) {
 	return marshalledData, nil
 }
 
-
 func (sFM *ShortFileMetadataPacket) UnmarshalBinary(data []byte) error {
 	sFM.FileSize = binary.BigEndian.Uint64(data[:8])
 
@@ -105,7 +119,7 @@ func (sFM *ShortFileMetadataPacket) UnmarshalBinary(data []byte) error {
 	sFM.FileHash = make([]byte, sFM.FileHashLength)
 	copy(sFM.FileHash, data[16:16+sFM.FileHashLength])
 
-	sFM.LastChangedLength = binary.BigEndian.Uint64(data[16+sFM.FileHashLength:24+sFM.FileHashLength])
+	sFM.LastChangedLength = binary.BigEndian.Uint64(data[16+sFM.FileHashLength : 24+sFM.FileHashLength])
 
 	sFM.LastChanged = make([]byte, sFM.LastChangedLength)
 	copy(sFM.LastChanged, data[24+sFM.FileHashLength:])
