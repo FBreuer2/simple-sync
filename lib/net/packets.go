@@ -1,6 +1,7 @@
 package net
 
 import (
+	"bytes"
 	"encoding"
 	"time"
 
@@ -13,6 +14,8 @@ const (
 	LOGIN                  = 2
 	SHORT_FILE_METADATA    = 3
 	EXTENDED_FILE_METADATA = 4
+	REQUEST_BLOCK_PACKET   = 5
+	BLOCK_PACKET           = 6
 )
 
 const (
@@ -163,4 +166,52 @@ func (eFM *ExtendedFileMetadataPacket) GetData() (*sync.ExtendedFileMetadata, er
 
 func (eFM *ExtendedFileMetadataPacket) Type() uint16 {
 	return EXTENDED_FILE_METADATA
+}
+
+type BlockPacket struct {
+	StrongChecksumLength uint32
+	StrongChecksum       []byte
+	BlockLength          uint64
+	Data                 []byte
+}
+
+func NewBlockPacket(strongChecksum []byte, data []byte) (*BlockPacket, error) {
+	return &BlockPacket{
+		StrongChecksumLength: uint32(len(strongChecksum)),
+		StrongChecksum:       strongChecksum,
+		BlockLength:          uint64(len(data)),
+		Data:                 data,
+	}, nil
+}
+
+func (bP *BlockPacket) Equals(otherBP *BlockPacket) bool {
+	return (bP.StrongChecksumLength == otherBP.StrongChecksumLength &&
+		bP.BlockLength == otherBP.BlockLength &&
+		bytes.Equal(bP.StrongChecksum, otherBP.StrongChecksum) == true &&
+		bytes.Equal(bP.Data, otherBP.Data) == true)
+}
+
+func (bP *BlockPacket) Type() uint16 {
+	return BLOCK_PACKET
+}
+
+type RequestBlockPacket struct {
+	StrongChecksumLength uint32
+	StrongChecksum       []byte
+}
+
+func NewRequestBlockPacket(strongChecksum []byte) (*RequestBlockPacket, error) {
+	return &RequestBlockPacket{
+		StrongChecksumLength: uint32(len(strongChecksum)),
+		StrongChecksum:       strongChecksum,
+	}, nil
+}
+
+func (rBP *RequestBlockPacket) Equals(otherRBP *RequestBlockPacket) bool {
+	return (rBP.StrongChecksumLength == otherRBP.StrongChecksumLength &&
+		bytes.Equal(rBP.StrongChecksum, otherRBP.StrongChecksum) == true)
+}
+
+func (rBP *RequestBlockPacket) Type() uint16 {
+	return REQUEST_BLOCK_PACKET
 }

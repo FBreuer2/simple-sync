@@ -234,3 +234,59 @@ func TestExtendedFileMetadataPacketMarshalling(t *testing.T) {
 		}
 	}
 }
+
+var blockPacketCombinations = []*net.BlockPacket{
+	&net.BlockPacket{4, []byte("abcd"), 6, []byte("dcefad")},
+	&net.BlockPacket{5, []byte("abcda"), 7, []byte("dcesfad")},
+}
+
+func TestBlockPacketMarshalling(t *testing.T) {
+	for _, instance := range blockPacketCombinations {
+		metaPacket := instance
+
+		marshalled, _ := metaPacket.MarshalBinary()
+
+		newPacket, _ := net.NewEncapsulatedPacket(metaPacket)
+
+		marshalledPacket, _ := newPacket.MarshalBinary()
+
+		newPacket.UnmarshalBinary(marshalledPacket)
+		metaPacket.UnmarshalBinary(newPacket.Data)
+
+		if newPacket.PacketLength != uint64(len(marshalled)) {
+			t.Errorf("Unmarshaling packet encapsulated Packet::PacketLength expected %d, actual %d", len(marshalled), newPacket.PacketLength)
+		}
+
+		if metaPacket.Equals(instance) == false {
+			t.Errorf("BlockPacket::Equals failed")
+		}
+	}
+}
+
+var requestBlockPacketCombinations = []*net.RequestBlockPacket{
+	&net.RequestBlockPacket{4, []byte("abcd")},
+	&net.RequestBlockPacket{5, []byte("abcda")},
+}
+
+func TestRequestBlockPacketMarshalling(t *testing.T) {
+	for _, instance := range requestBlockPacketCombinations {
+		metaPacket := instance
+
+		marshalled, _ := metaPacket.MarshalBinary()
+
+		newPacket, _ := net.NewEncapsulatedPacket(metaPacket)
+
+		marshalledPacket, _ := newPacket.MarshalBinary()
+
+		newPacket.UnmarshalBinary(marshalledPacket)
+		metaPacket.UnmarshalBinary(newPacket.Data)
+
+		if newPacket.PacketLength != uint64(len(marshalled)) {
+			t.Errorf("Unmarshaling packet encapsulated Packet::PacketLength expected %d, actual %d", len(marshalled), newPacket.PacketLength)
+		}
+
+		if metaPacket.Equals(instance) == false {
+			t.Errorf("RequestBlockPacket::Equals failed")
+		}
+	}
+}

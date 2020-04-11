@@ -182,3 +182,48 @@ func (eFM *ExtendedFileMetadataPacket) UnmarshalBinary(data []byte) error {
 
 	return nil
 }
+
+func (bP *BlockPacket) MarshalBinary() (data []byte, err error) {
+	marshalledData := make([]byte, 4+8+len(bP.StrongChecksum)+len(bP.Data))
+
+	binary.BigEndian.PutUint32(marshalledData[:4], bP.StrongChecksumLength)
+
+	copy(marshalledData[4:4+bP.StrongChecksumLength], bP.StrongChecksum)
+
+	binary.BigEndian.PutUint64(marshalledData[4+bP.StrongChecksumLength:12+bP.StrongChecksumLength], bP.BlockLength)
+	copy(marshalledData[12+bP.StrongChecksumLength:], bP.Data)
+
+	return marshalledData, nil
+}
+
+func (bP *BlockPacket) UnmarshalBinary(data []byte) error {
+	bP.StrongChecksumLength = binary.BigEndian.Uint32(data[:4])
+
+	bP.StrongChecksum = make([]byte, bP.StrongChecksumLength)
+	copy(bP.StrongChecksum, data[4:4+bP.StrongChecksumLength])
+
+	bP.BlockLength = binary.BigEndian.Uint64(data[4+bP.StrongChecksumLength : 12+bP.StrongChecksumLength])
+
+	bP.Data = make([]byte, bP.BlockLength)
+	copy(bP.Data, data[12+bP.StrongChecksumLength:])
+
+	return nil
+}
+
+func (rBP *RequestBlockPacket) MarshalBinary() (data []byte, err error) {
+	marshalledData := make([]byte, 4+len(rBP.StrongChecksum))
+
+	binary.BigEndian.PutUint32(marshalledData[:4], rBP.StrongChecksumLength)
+	copy(marshalledData[4:4+rBP.StrongChecksumLength], rBP.StrongChecksum)
+
+	return marshalledData, nil
+}
+
+func (rBP *RequestBlockPacket) UnmarshalBinary(data []byte) error {
+	rBP.StrongChecksumLength = binary.BigEndian.Uint32(data[:4])
+
+	rBP.StrongChecksum = make([]byte, rBP.StrongChecksumLength)
+	copy(rBP.StrongChecksum, data[4:4+rBP.StrongChecksumLength])
+
+	return nil
+}
