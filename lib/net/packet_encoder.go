@@ -126,3 +126,59 @@ func (sFM *ShortFileMetadataPacket) UnmarshalBinary(data []byte) error {
 
 	return nil
 }
+
+func (eFM *ExtendedFileMetadataPacket) MarshalBinary() (data []byte, err error) {
+	marshalledData := make([]byte, 8+4+4+8+eFM.BlockAmount*(4+8)+eFM.BlockAmount*uint64(eFM.StrongChecksumLength))
+
+	binary.BigEndian.PutUint64(marshalledData[:8], eFM.FileSize)
+	binary.BigEndian.PutUint32(marshalledData[8:12], eFM.StrongChecksumLength)
+	binary.BigEndian.PutUint32(marshalledData[12:16], eFM.BlockLength)
+	binary.BigEndian.PutUint64(marshalledData[16:24], eFM.BlockAmount)
+
+	offset := 0
+	for key, value := range eFM.WeakBlockHashes {
+		binary.BigEndian.PutUint32(marshalledData[24+(offset*12):28+(offset*12)], key)
+		binary.BigEndian.PutUint64(marshalledData[28+(offset*12):36+(offset*12)], uint64(value))
+		offset += 1
+	}
+
+	currentOffset := uint32(36 + ((offset - 1) * 12))
+	for index := range eFM.StrongBlockHashes {
+		copy(marshalledData[currentOffset:currentOffset+eFM.StrongChecksumLength], eFM.StrongBlockHashes[index])
+		currentOffset += eFM.StrongChecksumLength
+	}
+
+	return marshalledData, nil
+}
+
+func (eFM *ExtendedFileMetadataPacket) UnmarshalBinary(data []byte) error {
+	eFM.FileSize = binary.BigEndian.Uint64(data[:8])
+	eFM.StrongChecksumLength = binary.BigEndian.Uint32(data[8:12])
+	eFM.BlockLength = binary.BigEndian.Uint32(data[12:16])
+	eFM.BlockAmount = binary.BigEndian.Uint64(data[16:24])
+
+	eFM.WeakBlockHashes = make(map[uint32]int64)
+
+	offset := uint64(0)
+
+	for offset < eFM.BlockAmount {
+		key := binary.BigEndian.Uint32(data[24+(offset*12) : 28+(offset*12)])
+		value := binary.BigEndian.Uint64(data[28+(offset*12) : 36+(offset*12)])
+
+		eFM.WeakBlockHashes[key] = int64(value)
+		offset += 1
+
+	}
+
+	eFM.StrongBlockHashes = make([][]byte, eFM.BlockAmount)
+
+	currentOffset := uint32(36 + ((offset - 1) * 12))
+
+	for index := range eFM.StrongBlockHashes {
+		eFM.StrongBlockHashes[index] = make([]byte, eFM.StrongChecksumLength)
+		copy(eFM.StrongBlockHashes[index], data[currentOffset:currentOffset+eFM.StrongChecksumLength])
+		currentOffset += eFM.StrongChecksumLength
+	}
+
+	return nil
+}

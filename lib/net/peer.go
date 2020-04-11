@@ -185,7 +185,14 @@ func (peer *Peer) HandleShortFileMetadataPacketPacket(shortFileMetadataPacket *S
 		return
 	}
 
-	log.Printf("Peer on "+peer.conn.RemoteAddr().String()+" sent stale metadata with file size %d and time %s\n", newSFM.FileSize, newSFM.LastChanged.Format("2006-01-02 15:04:05.999999999 -0700 MST"))
+	// stale metadata
+	if newSFM.Equals(currentSFM) == false {
+		log.Printf("Peer on "+peer.conn.RemoteAddr().String()+" has stale file with file size %d and time %s\n", newSFM.FileSize, newSFM.LastChanged.Format("2006-01-02 15:04:05.999999999 -0700 MST"))
+		return
+	}
+
+	log.Printf("Peer on "+peer.conn.RemoteAddr().String()+" sent same metadata with file size %d and time %s\n", newSFM.FileSize, newSFM.LastChanged.Format("2006-01-02 15:04:05.999999999 -0700 MST"))
+	return
 }
 
 func (peer *Peer) RetrieveBlocks() {

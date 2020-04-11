@@ -8,10 +8,11 @@ import (
 )
 
 const (
-	REPLY               = 0
-	HELLO               = 1
-	LOGIN               = 2
-	SHORT_FILE_METADATA = 3
+	REPLY                  = 0
+	HELLO                  = 1
+	LOGIN                  = 2
+	SHORT_FILE_METADATA    = 3
+	EXTENDED_FILE_METADATA = 4
 )
 
 const (
@@ -127,4 +128,39 @@ func (sFM *ShortFileMetadataPacket) GetData() (*sync.ShortFileMetadata, error) {
 
 func (sFM *ShortFileMetadataPacket) Type() uint16 {
 	return SHORT_FILE_METADATA
+}
+
+type ExtendedFileMetadataPacket struct {
+	FileSize             uint64
+	StrongChecksumLength uint32
+	BlockLength          uint32
+	BlockAmount          uint64
+	WeakBlockHashes      map[uint32]int64
+	StrongBlockHashes    [][]byte
+}
+
+func NewExtendedFileMetadataPacket(eFM *sync.ExtendedFileMetadata) (*ExtendedFileMetadataPacket, error) {
+	return &ExtendedFileMetadataPacket{
+		FileSize:             eFM.FileSize,
+		StrongChecksumLength: eFM.StrongChecksumLength,
+		BlockLength:          eFM.BlockLength,
+		BlockAmount:          eFM.BlockAmount,
+		WeakBlockHashes:      eFM.WeakBlockHashes,
+		StrongBlockHashes:    eFM.StrongBlockHashes,
+	}, nil
+}
+
+func (eFM *ExtendedFileMetadataPacket) GetData() (*sync.ExtendedFileMetadata, error) {
+	return &sync.ExtendedFileMetadata{
+		FileSize:             eFM.FileSize,
+		StrongChecksumLength: eFM.StrongChecksumLength,
+		BlockLength:          eFM.BlockLength,
+		BlockAmount:          eFM.BlockAmount,
+		WeakBlockHashes:      eFM.WeakBlockHashes,
+		StrongBlockHashes:    eFM.StrongBlockHashes,
+	}, nil
+}
+
+func (eFM *ExtendedFileMetadataPacket) Type() uint16 {
+	return EXTENDED_FILE_METADATA
 }

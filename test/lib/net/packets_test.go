@@ -176,3 +176,61 @@ func TestReplyPacketMarshalling(t *testing.T) {
 		}
 	}
 }
+
+var extendedFileMetadataCombinations = []*sync.ExtendedFileMetadata{
+	&sync.ExtendedFileMetadata{12, 2, 3, 5, make(map[uint32]int64), make([][]byte, 5)},
+	&sync.ExtendedFileMetadata{342, 23, 3, 5, make(map[uint32]int64), make([][]byte, 5)},
+}
+
+func TestExtendedFileMetadataPacketMarshalling(t *testing.T) {
+	for _, instance := range extendedFileMetadataCombinations {
+
+		for i := 0; uint64(i) < instance.BlockAmount; i++ {
+			instance.WeakBlockHashes[uint32(i)] = int64(i + 1)
+		}
+
+		for index := range instance.StrongBlockHashes {
+			instance.StrongBlockHashes[index] = make([]byte, instance.StrongChecksumLength)
+
+			for innerIndex := range instance.StrongBlockHashes[index] {
+				instance.StrongBlockHashes[index][innerIndex] = 'q'
+			}
+		}
+
+		metaPacket, _ := net.NewExtendedFileMetadataPacket(instance)
+
+		marshalled, _ := metaPacket.MarshalBinary()
+
+		newPacket, _ := net.NewEncapsulatedPacket(metaPacket)
+
+		marshalledPacket, _ := newPacket.MarshalBinary()
+
+		newPacket.UnmarshalBinary(marshalledPacket)
+		metaPacket.UnmarshalBinary(newPacket.Data)
+
+		if newPacket.PacketLength != uint64(len(marshalled)) {
+			t.Errorf("Unmarshaling packet encapsulated Packet::PacketLength expected %d, actual %d", len(marshalled), newPacket.PacketLength)
+		}
+
+		if metaPacket.FileSize != instance.FileSize {
+			t.Errorf("Unmarshaling packet encapsulated ExtendedFileMetadataPacket::FileSize expected %d, actual %d", instance.FileSize, metaPacket.FileSize)
+		}
+
+		if metaPacket.StrongChecksumLength != instance.StrongChecksumLength {
+			t.Errorf("Unmarshaling packet encapsulated ExtendedFileMetadataPacket::StrongChecksumLength expected %d, actual %d", instance.StrongChecksumLength, metaPacket.StrongChecksumLength)
+		}
+
+		if metaPacket.BlockLength != instance.BlockLength {
+			t.Errorf("Unmarshaling packet encapsulated ExtendedFileMetadataPacket::BlockLength expected %d, actual %d", instance.BlockLength, metaPacket.BlockLength)
+		}
+
+		if metaPacket.BlockAmount != instance.BlockAmount {
+			t.Errorf("Unmarshaling packet encapsulated ExtendedFileMetadataPacket::BlockAmount expected %d, actual %d", instance.BlockAmount, metaPacket.BlockAmount)
+		}
+
+		retrieved, _ := metaPacket.GetData()
+		if retrieved.Equals(instance) == false {
+			t.Errorf("ExtendedFileMetadataPacket::Equals failed")
+		}
+	}
+}
