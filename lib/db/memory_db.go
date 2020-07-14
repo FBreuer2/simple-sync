@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/rand"
 	"errors"
+	"io"
 
 	"github.com/FBreuer2/simple-sync/lib/sync"
 	"golang.org/x/crypto/bcrypt"
@@ -115,7 +116,7 @@ func (mDB *MemoryDB) RetrieveShortFileMetadata(user []byte) (*sync.ShortFileMeta
 	}
 
 	if store := mDB.shortMetadataStore[string(user)]; store == nil {
-		return nil, errors.New("No short metadata exists yet.")
+		return nil, FILE_NOT_AVAILABLE
 	} else {
 		return store, nil
 	}
@@ -132,7 +133,7 @@ func (mDB *MemoryDB) RetrieveExtendedFileMetadata(user []byte) (*sync.ExtendedFi
 	}
 
 	if store := mDB.extendedMetadataStore[string(user)]; store == nil {
-		return nil, errors.New("No extended metadata exists yet.")
+		return nil, FILE_NOT_AVAILABLE
 	} else {
 		return store, nil
 	}
@@ -143,11 +144,31 @@ func (mDB *MemoryDB) PutExtendedFileMetadata(user []byte, metadata *sync.Extende
 	return nil
 }
 
-func (mDB *MemoryDB) RetrieveBlock(hash []byte) ([]byte, error) {
+func (mDB *MemoryDB) RetrieveFile(user []byte, file string) (io.Reader, error) {
+	eFM, err := mDB.RetrieveExtendedFileMetadata(user)
+
+	if err != nil {
+		return nil, err
+	}
+
+	blockFile, err := NewBlockFile(eFM, mDB)
+
+	return blockFile, err
+}
+
+func (mDB *MemoryDB) HasBlock(hash []byte) bool {
 	if block := mDB.blockStore[string(hash)]; block == nil {
-		return nil, errors.New("Block not found")
+		return false
 	} else {
-		return block, nil
+		return true
+	}
+}
+
+func (mDB *MemoryDB) RetrieveBlock(hash []byte) (io.Reader, error) {
+	if block := mDB.blockStore[string(hash)]; block == nil {
+		return nil, BLOCK_NOT_AVAILABLE
+	} else {
+		return bytes.NewReader(block), nil
 	}
 }
 

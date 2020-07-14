@@ -14,7 +14,7 @@ func main() {
 	var pathToInputFile, serverURL, fingerprint string
 
 	flag.StringVar(&serverURL, "u", "127.0.0.1:8888", "URL of the server.")
-	flag.StringVar(&pathToInputFile, "i", "./keys.kdbx", "Path to a file which should be version controlled.")
+	flag.StringVar(&pathToInputFile, "i", "./file.bmp", "Path to a file which should be version controlled.")
 	flag.StringVar(&fingerprint, "f", "2926ea1c1e4adefb2ecbc7bb58e3172752d36274fdf899aca1667debd292fb7b", "Fingerprint of the server's tls certificate.")
 	flag.Parse()
 
